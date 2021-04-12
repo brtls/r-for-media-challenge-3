@@ -1,6 +1,8 @@
 library(assertthat)
 
-
+#load libraries
+library(dplyr)
+library(tidyr)
 ### Challenge III
 # * Load both the 2020 election results ('wahlergebnisse.rds') and stadtteil_profile ('stadtteil_profil.rds').
 # * Calculate each parties' election result per district (valid ballots are basis for this calculation).
@@ -16,6 +18,33 @@ library(assertthat)
 
 # combined <- …
 
+# load the data
+wahlergebnisse <- readRDS("wahlergebnisse.rds")
+stadtteil_profil <- readRDS("stadtteil_profil.rds")
+# in wahlergebnissen alle "NA" Werte in "0" umwandeln 
+wahlergebnisse[is.na(wahlergebnisse)] <- 0
+
+# combine wahlergebnisse.rds with stadtteil_profil.rds
+combined <- stadtteil_profil %>%  
+  left_join(wahlergebnisse, by = c("stadtteil" = "bezeichnung"))
+
+# Calculating each parties' election result per district in relation to the other parties
+wahlergebnisse_ration <- wahlergebnisse %>% 
+  mutate(across(c(spd, cdu, die_linke, fdp, grune, af_d, freie_wahler, odp, piraten, volt_hamburg, di_b, menschliche_welt, sedat_ayhan, sldp), function(df){
+    df / gultige_stimmen
+    })
+  )
+
+# Calculating the ratio of people with a migration background in the total population of each district and comparing migration ratio to result of AFD
+combined <- combined %>% 
+  mutate(
+    mig_ratio = bevolkerung_mit_migrations_hintergrund / bevolkerung,
+    turn_out = wahlende / wahlberechtigte_insgesamt,
+    afd = wahlergebnisse_ration$af_d) %>% 
+  select(stadtteil, turn_out, mig_ratio, afd) %>% 
+  arrange(desc(afd))
+  
+  
 if (
   assert_that(
     has_name(combined, "stadtteil"), msg = "Spalte 'stadtteil' fehlt"
